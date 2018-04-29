@@ -10,7 +10,8 @@ public class GPUTerrainChunk : MonoBehaviour
     /// <summary>
     /// Size of terrrain chunk meshes.
     /// </summary>
-    private int Size = 256;
+    [SerializeField]
+    private int Size = 10;
 
     [SerializeField]
     private Vector3 scale = Vector3.one;
