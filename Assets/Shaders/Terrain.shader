@@ -3,6 +3,8 @@
     Properties
     {
         [NoScaleOffset] _MainTex ("Texture", 2D) = "white" {}
+        _Heightmap ("Terrain heightmap", 2D) = "black" {}
+        _HeightMultiplier ("Terrain multiplier", Float) = 20.0
     }
     SubShader
     {
@@ -43,10 +45,18 @@
             sampler2D _MainTex;
             float4 _MainTex_ST;
 
+            sampler2D _Heightmap;
+            float _HeightMultiplier;
+
             v2f vert (appdata_base v)
             {
                 v2f o;
-                o.pos = UnityObjectToClipPos(v.vertex);
+                float3 pos = v.vertex;
+                float height = tex2Dlod(_Heightmap, v.texcoord).x;
+                pos.y = height * _HeightMultiplier;
+
+                o.pos = UnityObjectToClipPos(pos);
+
                 o.uv = v.texcoord;
                 // get the vertex normal in world space
                 half3 worldNormal = UnityObjectToWorldNormal(v.normal);
