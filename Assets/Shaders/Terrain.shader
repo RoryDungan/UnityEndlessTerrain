@@ -4,7 +4,8 @@
     {
         [NoScaleOffset] _MainTex ("Texture", 2D) = "white" {}
         _Heightmap ("Terrain heightmap", 2D) = "black" {}
-        _HeightMultiplier ("Terrain multiplier", Float) = 20.0
+        _HeightMultiplier("Terrain multiplier", Float) = 20.0
+        _VertexSpacing("Vertex spacing", Float) = 0.05
     }
     SubShader
     {
@@ -47,28 +48,38 @@
 
             sampler2D _Heightmap;
             float _HeightMultiplier;
+            float _VertexSpacing;
 
             v2f vert (appdata_base v)
             {
                 v2f o;
-                float3 pos = v.vertex;
-                float height = tex2Dlod(_Heightmap, v.texcoord).x;
-                pos.y = height * _HeightMultiplier;
 
-                o.pos = UnityObjectToClipPos(pos);
+                float3 v0 = v.vertex;
+                v0.y = tex2Dlod(_Heightmap, v.texcoord).x * _HeightMultiplier;
+
+                // Create two fake neightbour vertices in order to calculate the normal
+                float3 v1 = v.vertex + float3(0.05, 0.0, 0.0); // +X
+                v1.y = tex2Dlod(_Heightmap, v.texcoord + float4(_VertexSpacing, 0, 0, 0)).x * _HeightMultiplier;
+                float3 v2 = v.vertex + float3(0.0, 0.0, 0.05); // +Z
+                v2.y = tex2Dlod(_Heightmap, v.texcoord + float4(0, _VertexSpacing, 0, 0)).x * _HeightMultiplier;
+
+                float3 vertexNormal = normalize(cross(v2 - v0, v1 - v0));
+
+                o.pos = UnityObjectToClipPos(v0);
 
                 o.uv = v.texcoord;
                 // get the vertex normal in world space
-                half3 worldNormal = UnityObjectToWorldNormal(v.normal);
+                half3 worldNormal = UnityObjectToWorldNormal(vertexNormal);
                 // dot product between the normal and light direction for
                 // standard diffuse (Lambert) lighting
                 half nl = max(0, dot(worldNormal, _WorldSpaceLightPos0.xyz));
                 // factor in the light color
                 o.diff = nl * _LightColor0.rgb;
                 o.ambient = ShadeSH9(half4(worldNormal, 1));
+                //o.diff = worldNormal;
 
                 // compute shadows data
-                TRANSFER_SHADOW(o)
+                //TRANSFER_SHADOW(o)
 
                 // Compute fog amount from clip space position.
                 UNITY_TRANSFER_FOG(o, o.pos);
@@ -78,6 +89,8 @@
 
             fixed4 frag (v2f i) : SV_Target
             {
+                //return fixed4(i.diff.x, i.diff.y, i.diff.z, 1);
+
                 // sample the texture
                 fixed4 col = tex2D(_MainTex, i.uv);
 
