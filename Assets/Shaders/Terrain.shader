@@ -24,12 +24,19 @@
             #include "UnityCG.cginc" // for UnityObjectToWorldNormal
             #include "UnityLightingCommon.cginc" // for _LightColor0
 
+            // compile shader into multiple variants with and without shadows
+            // (we don't care about any lightmaps yet, so skip these variants)
+            #pragma multi_compile_fwdbase nolightmap nodirlightmap nodynlightmap novertexlight
+            #include "AutoLight.cginc" // shadow helper functions and macros
+
             struct v2f
             {
                 float2 uv : TEXCOORD0;
+                SHADOW_COORDS(1) // put shadows data into TEXCOORD1
                 //UNITY_FOG_COORDS(1)
-                float4 vertex : SV_POSITION;
-                float4 diff : COLOR0; // diffuse lighting color
+                fixed3 diff : COLOR0; // diffuse lighting color
+                fixed3 ambient : COLOR1;
+                float4 pos : SV_POSITION;
             };
 
             sampler2D _MainTex;
@@ -38,7 +45,7 @@
             v2f vert (appdata_base v)
             {
                 v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.pos = UnityObjectToClipPos(v.vertex);
                 o.uv = v.texcoord;
                 // get the vertex normal in world space
                 half3 worldNormal = UnityObjectToWorldNormal(v.normal);
@@ -46,9 +53,11 @@
                 // standard diffuse (Lambert) lighting
                 half nl = max(0, dot(worldNormal, _WorldSpaceLightPos0.xyz));
                 // factor in the light color
-                o.diff = nl * _LightColor0;
+                o.diff = nl * _LightColor0.rgb;
+                o.ambient = ShadeSH9(half4(worldNormal, 1));
 
-                o.diff.rgb += ShadeSH9(half4(worldNormal, 1));
+                // compute shadows data
+                TRANSFER_SHADOW(o)
 
                 //UNITY_TRANSFER_FOG(o,o.vertex);
                 return o;
@@ -59,8 +68,13 @@
                 // sample the texture
                 fixed4 col = tex2D(_MainTex, i.uv);
 
+                // compute shadow attenuation (1.0 = fully lit, 0.0 = fully shadowed)
+                fixed shadow = SHADOW_ATTENUATION(i);
+                // darken light's illumination with shadow, keep ambient intact
+                fixed3 lighting = i.diff * shadow + i.ambient;
+
                 // multiply by lighting
-                col *= i.diff;
+                col.rgb *= lighting;
 
                 // apply fog
                 //UNITY_APPLY_FOG(i.fogCoord, col);
