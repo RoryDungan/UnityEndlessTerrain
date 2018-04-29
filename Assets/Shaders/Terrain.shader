@@ -18,8 +18,6 @@
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // make fog work
-            //#pragma multi_compile_fog
 
             #include "UnityCG.cginc" // for UnityObjectToWorldNormal
             #include "UnityLightingCommon.cginc" // for _LightColor0
@@ -29,14 +27,17 @@
             #pragma multi_compile_fwdbase nolightmap nodirlightmap nodynlightmap novertexlight
             #include "AutoLight.cginc" // shadow helper functions and macros
 
+            // make fog work
+            #pragma multi_compile_fog
+
             struct v2f
             {
                 float2 uv : TEXCOORD0;
                 SHADOW_COORDS(1) // put shadows data into TEXCOORD1
-                //UNITY_FOG_COORDS(1)
                 fixed3 diff : COLOR0; // diffuse lighting color
                 fixed3 ambient : COLOR1;
                 float4 pos : SV_POSITION;
+                UNITY_FOG_COORDS(2) // Used to pass fog amount around
             };
 
             sampler2D _MainTex;
@@ -59,7 +60,9 @@
                 // compute shadows data
                 TRANSFER_SHADOW(o)
 
-                //UNITY_TRANSFER_FOG(o,o.vertex);
+                // Compute fog amount from clip space position.
+                UNITY_TRANSFER_FOG(o, o.pos);
+
                 return o;
             }
 
@@ -77,7 +80,7 @@
                 col.rgb *= lighting;
 
                 // apply fog
-                //UNITY_APPLY_FOG(i.fogCoord, col);
+                UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;
             }
             ENDCG
