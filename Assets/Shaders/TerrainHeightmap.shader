@@ -21,7 +21,7 @@
             #pragma target 3.0
 
             #include "UnityCG.cginc"
-            #include "ClassicNoise2D.hlsl"
+            #include "TerrainNoise.hlsl"
 
             float _PosX;
             float _PosY;
@@ -31,20 +31,7 @@
             {
                 float2 uv = IN.globalTexcoord + float2(_PosX, _PosY);
 
-                float o = 0.5;
-                float s = _Scale;
-                float w = 0.5;
-
-                for (int i = 0; i < 6; i++)
-                {
-                    float2 coord = uv * s;
-                    float2 period = s * 2.0;
-
-                    o += cnoise(coord) * w;
-
-                    s *= 2.0;
-                    w *= 0.5;
-                }
+                float o = terrainNoise(uv, _Scale);
 
                 return float4(o, o, o, 1);
             }
