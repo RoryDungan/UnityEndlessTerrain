@@ -3,7 +3,6 @@
     Properties
     {
         [NoScaleOffset] _MainTex ("Texture", 2D) = "white" {}
-        _Heightmap ("Terrain heightmap", 2D) = "black" {}
         _HeightMultiplier("Terrain multiplier", Float) = 20.0
         _VertexSpacing("Vertex spacing", Float) = 0.05
     }
@@ -30,6 +29,8 @@
             #pragma multi_compile_fwdbase nolightmap nodirlightmap nodynlightmap novertexlight
             #include "AutoLight.cginc" // shadow helper functions and macros
 
+            #include "TerrainNoise.hlsl"
+
             // make fog work
             #pragma multi_compile_fog
 
@@ -46,7 +47,6 @@
             sampler2D _MainTex;
             float4 _MainTex_ST;
 
-            sampler2D _Heightmap;
             float _HeightMultiplier;
             float _VertexSpacing;
 
@@ -54,24 +54,27 @@
             {
                 v2f o;
 
-                float3 v0 = v.vertex;
-                v0.y = tex2Dlod(_Heightmap, v.texcoord).x * _HeightMultiplier;
+                float4 v0 = float4(v.vertex.x, v.vertex.y, v.vertex.z, 1);
+                v0.y = terrainNoise(mul(unity_ObjectToWorld, v0).xz, 0.01).x * _HeightMultiplier;
 
                 // Create two fake neightbour vertices in order to calculate the normal
-                float3 v1 = v.vertex + float3(0.05, 0.0, 0.0); // +X
-                v1.y = tex2Dlod(_Heightmap, v.texcoord + float4(_VertexSpacing, 0, 0, 0)).x * _HeightMultiplier;
-                float3 v2 = v.vertex + float3(0.0, 0.0, 0.05); // +Z
-                v2.y = tex2Dlod(_Heightmap, v.texcoord + float4(0, _VertexSpacing, 0, 0)).x * _HeightMultiplier;
+                float4 v1 = v0 + float4(0.05, 0.0, 0.0, 0.0); // +X
+                v1.y = terrainNoise(mul(unity_ObjectToWorld, v1).xz + float2(_VertexSpacing, 0), 0.01).x * _HeightMultiplier;
+                float4 v2 = v0 + float4(0.0, 0.0, 0.05, 0.0); // +Z
+                v2.y = terrainNoise(mul(unity_ObjectToWorld, v2).xz + float2(0, _VertexSpacing), 0.01).x * _HeightMultiplier;
 
-                float3 vertexNormal = normalize(cross(v2 - v0, v1 - v0));
+                float3 vertexNormal = normalize(cross(v2 - v0, v1 - v0).xyz);
 
-                o.pos = UnityObjectToClipPos(v0);
+                o.pos = UnityObjectToClipPos(v0.xyz);
 
                 o.uv = v.texcoord;
+
                 // get the vertex normal in world space
                 half3 worldNormal = UnityObjectToWorldNormal(vertexNormal);
+
                 // dot product between the normal and light direction for
                 // standard diffuse (Lambert) lighting
+
                 half nl = max(0, dot(worldNormal, _WorldSpaceLightPos0.xyz));
                 // factor in the light color
                 o.diff = nl * _LightColor0.rgb;
@@ -79,7 +82,7 @@
                 //o.diff = worldNormal;
 
                 // compute shadows data
-                //TRANSFER_SHADOW(o)
+                TRANSFER_SHADOW(o)
 
                 // Compute fog amount from clip space position.
                 UNITY_TRANSFER_FOG(o, o.pos);
