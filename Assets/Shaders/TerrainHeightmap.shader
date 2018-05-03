@@ -31,7 +31,7 @@
             {
                 float2 uv = IN.globalTexcoord + float2(_PosX, _PosY);
 
-                float o = terrainNoise(uv, _Scale);
+                float o = terrainNoiseHeight(uv, _Scale);
 
                 return float4(o, o, o, 1);
             }
