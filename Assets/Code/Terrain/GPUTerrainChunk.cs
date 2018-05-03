@@ -60,12 +60,12 @@ public class GPUTerrainChunk : MonoBehaviour
             for (var j = 0; j < size; j++)
             {
                 v[i * size + j].x =
-                    i * scale.x / (size - 1);
+                    i * scale.x / (size - 1) - scale.x / 2f;
 
                 v[i * size + j].y = 0f;
 
                 v[i * size + j].z =
-                    j * scale.z / (size - 1);
+                    j * scale.z / (size - 1) - scale.z / 2f;
             }
         }
         return v;
