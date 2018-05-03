@@ -3,8 +3,9 @@
     Properties
     {
         [NoScaleOffset] _MainTex ("Texture", 2D) = "white" {}
-        _HeightMultiplier("Terrain multiplier", Float) = 20.0
+        _HeightMultiplier("Height multiplier", Float) = 20.0
         _VertexSpacing("Vertex spacing", Float) = 0.05
+        _Hilliness("Hilliness", Float) = 0.01
     }
     SubShader
     {
@@ -49,6 +50,7 @@
 
             float _HeightMultiplier;
             float _VertexSpacing;
+            float _Hilliness;
 
             v2f vert (appdata_base v)
             {
@@ -56,14 +58,14 @@
 
                 float4 v0 = float4(v.vertex.x, v.vertex.y, v.vertex.z, 1);
                 float2 v0WorldXZ = mul(unity_ObjectToWorld, v0).xz;
-                v0.y = terrainNoise(v0WorldXZ, 0.01).x * _HeightMultiplier;
+                v0.y = terrainNoise(v0WorldXZ, _Hilliness).x * _HeightMultiplier;
 
                 // Create two fake neightbour vertices in order to calculate the normal
                 float4 v1 = v0 + float4(_VertexSpacing, 0.0, 0.0, 0.0); // +X
-                v1.y = terrainNoise(v0WorldXZ + float2(_VertexSpacing, 0), 0.01).x * _HeightMultiplier;
+                v1.y = terrainNoise(v0WorldXZ + float2(_VertexSpacing, 0), _Hilliness).x * _HeightMultiplier;
                 float4 v2 = v0 + float4(0.0, 0.0, _VertexSpacing, 0.0); // +Z
-                v2.y = terrainNoise(v0WorldXZ + float2(0, _VertexSpacing), 0.01).x * _HeightMultiplier;
-
+                v2.y = terrainNoise(v0WorldXZ + float2(0, _VertexSpacing), _Hilliness).x * _HeightMultiplier;
+                
                 float3 vertexNormal = normalize(cross(v2 - v0, v1 - v0).xyz);
 
                 o.pos = UnityObjectToClipPos(v0.xyz);
