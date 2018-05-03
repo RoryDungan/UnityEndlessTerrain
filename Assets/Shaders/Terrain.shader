@@ -55,13 +55,14 @@
                 v2f o;
 
                 float4 v0 = float4(v.vertex.x, v.vertex.y, v.vertex.z, 1);
-                v0.y = terrainNoise(mul(unity_ObjectToWorld, v0).xz, 0.01).x * _HeightMultiplier;
+                float2 v0WorldXZ = mul(unity_ObjectToWorld, v0).xz;
+                v0.y = terrainNoise(v0WorldXZ, 0.01).x * _HeightMultiplier;
 
                 // Create two fake neightbour vertices in order to calculate the normal
                 float4 v1 = v0 + float4(_VertexSpacing, 0.0, 0.0, 0.0); // +X
-                v1.y = terrainNoise(mul(unity_ObjectToWorld, v1).xz + float2(_VertexSpacing, 0), 0.01).x * _HeightMultiplier;
+                v1.y = terrainNoise(v0WorldXZ + float2(_VertexSpacing, 0), 0.01).x * _HeightMultiplier;
                 float4 v2 = v0 + float4(0.0, 0.0, _VertexSpacing, 0.0); // +Z
-                v2.y = terrainNoise(mul(unity_ObjectToWorld, v2).xz + float2(0, _VertexSpacing), 0.01).x * _HeightMultiplier;
+                v2.y = terrainNoise(v0WorldXZ + float2(0, _VertexSpacing), 0.01).x * _HeightMultiplier;
 
                 float3 vertexNormal = normalize(cross(v2 - v0, v1 - v0).xyz);
 
@@ -70,7 +71,7 @@
                 o.uv = v.texcoord;
 
                 // get the vertex normal in world space
-                half3 worldNormal = UnityObjectToWorldNormal(vertexNormal);
+                half3 worldNormal = (half3) vertexNormal;
 
                 // dot product between the normal and light direction for
                 // standard diffuse (Lambert) lighting
