@@ -1,37 +1,65 @@
-﻿using System.Collections.Generic;
-using UnityEngine; 
- 
+﻿using Assets.Code.Terrain;
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Assertions;
+
 public class TerrainManager : MonoBehaviour 
 { 
     /// <summary> 
     /// Show high detail around this object, lower further out. 
     /// </summary> 
-    private Transform player; 
- 
-    /// <summary> 
-    /// The index of the first chunk. Chosen as 50000 because negative perlin noise values 
-    /// are mirrored, so (0,0) should be avoided. 
-    /// </summary> 
-    private const int InitialChunkPosition = 50000; 
- 
-    [SerializeField] 
-    private Vector3 scale = Vector3.one;
+    private Transform player;
+
 
     [SerializeField]
-    private int nChunks;
+    private Vector3 scale = new Vector3(256, 1, 256);
 
     [SerializeField]
     private Material terrainMaterial;
 
+    private IDictionary<int, IDictionary<GridCoords, Transform[]>> meshChunks;
+
+    struct GridCoords
+    {
+        public int X;
+        public int Y;
+
+        public static GridCoords operator +(GridCoords a, GridCoords b) => 
+            new GridCoords
+            {
+                X = a.X + b.X,
+                Y = a.Y + b.Y
+            };
+
+        public static GridCoords operator -(GridCoords a, GridCoords b) => 
+            new GridCoords
+            {
+                X = a.X - b.X,
+                Y = a.Y - b.Y
+            };
+    }
+
+    static float Magnitude(this GridCoords point) => 
+        Mathf.Sqrt(point.X * point.X + point.Y * point.Y);
+
+    /// <summary>
+    /// Convert a world-space position to grid coordinates. Ignores elevation (y axis).
+    /// </summary>
+    GridCoords WorldPositionToGridCoords(Vector3 pos)
+    {
+        return new GridCoords
+        {
+            X = (int)Math.Floor(pos.x / scale.x),
+            Y = (int)Math.Floor(pos.z / scale.z)
+        };
+    }
+
     private void Start()
     {
-        for (var i = 0; i < nChunks; i++)
-        {
-            for (var j = 0; j < nChunks; j++)
-            {
-                SpawnChunk(i, j);
-            }
-        }
+        Assert.IsNotNull(player);
+
+        meshChunks = new Dictionary<int, IDictionary<GridCoords, Transform[]>>();
     }
 
     private void Update() 
@@ -39,7 +67,7 @@ public class TerrainManager : MonoBehaviour
         // TODO: spawn chunks around the player
     }
 
-    private void SpawnChunk(int xPos, int yPos)
+    private void SpawnChunk(int size, int xPos, int yPos)
     {
         var chunk = new GameObject
         {
@@ -47,18 +75,10 @@ public class TerrainManager : MonoBehaviour
         };
         chunk.transform.parent = transform;
 
-        chunk.transform.position = new Vector3(
-            (xPos - nChunks / 2) * scale.x, 
-            0f, 
-            (yPos - nChunks / 2) * scale.z
-        );
+        var meshFilter = chunk.AddComponent<MeshFilter>();
+        meshFilter.mesh = FlatMeshGenerator.GenerateFlatMesh(size, scale);
 
-        var terrainGen = chunk.AddComponent<TerrainGenerator>();
-        terrainGen.Material = terrainMaterial;
-        terrainGen.PosX = xPos + InitialChunkPosition;
-        terrainGen.PosY = yPos + InitialChunkPosition;
-        terrainGen.Scale = scale;
-        terrainGen.SetupGameObject();
-        terrainGen.UpdateMesh();
+        var renderer = chunk.AddComponent<MeshRenderer>();
+        renderer.material = terrainMaterial;
     }
 } 
