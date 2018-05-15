@@ -38,10 +38,10 @@ public class TerrainManager : MonoBehaviour
                 X = a.X - b.X,
                 Y = a.Y - b.Y
             };
-    }
 
-    static float Magnitude(this GridCoords point) => 
-        Mathf.Sqrt(point.X * point.X + point.Y * point.Y);
+        float Magnitude() => 
+            Mathf.Sqrt(X * X + Y * Y);
+    }
 
     /// <summary>
     /// Convert a world-space position to grid coordinates. Ignores elevation (y axis).
